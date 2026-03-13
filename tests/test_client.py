@@ -36,7 +36,7 @@ class TestAuth:
         session = MockSession.return_value
         session.post.return_value = _mock_auth_response("my-token")
 
-        client = PlaudClient("user@example.com", "s3cret")
+        client = PlaudClient(email="user@example.com", password="s3cret")
 
         # Should have called POST to the auth endpoint
         session.post.assert_called_once()
@@ -54,7 +54,7 @@ class TestAuth:
         session = MockSession.return_value
         session.post.return_value = _mock_auth_response()
 
-        PlaudClient("u@e.com", "pw", base_url="https://api-euc1.plaud.ai")
+        PlaudClient(email="u@e.com", password="pw", base_url="https://api-euc1.plaud.ai")
 
         args, _ = session.post.call_args
         assert args[0] == "https://api-euc1.plaud.ai/auth/access-token"
@@ -67,14 +67,24 @@ class TestAuth:
         session.post.return_value = resp
 
         with pytest.raises(Exception, match="401"):
-            PlaudClient("u@e.com", "bad")
+            PlaudClient(email="u@e.com", password="bad")
+
+    @patch("plaud_downloader.client.requests.Session")
+    def test_token_auth_skips_login(self, MockSession):
+        session = MockSession.return_value
+
+        client = PlaudClient(token="bearer eyJfake")
+
+        # No POST call (no login)
+        session.post.assert_not_called()
+        assert client._token == "eyJfake"
 
     @patch("plaud_downloader.client.requests.Session")
     def test_auth_sets_browser_headers(self, MockSession):
         session = MockSession.return_value
         session.post.return_value = _mock_auth_response("tok")
 
-        PlaudClient("u@e.com", "pw")
+        PlaudClient(email="u@e.com", password="pw")
 
         # First call sets browser headers, second sets Authorization
         headers = session.headers.update.call_args_list[0][0][0]
@@ -100,7 +110,7 @@ class TestListRecordings:
             "data_file_list": files,
         })
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         result = client.list_recordings(limit=200)
 
         assert result == files
@@ -121,7 +131,7 @@ class TestListRecordings:
             _mock_json_response({"status": 0, "data_file_list": page2}),
         ]
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         result = client.list_recordings(limit=3)
 
         assert len(result) == 4
@@ -135,7 +145,7 @@ class TestListRecordings:
             "status": 0, "data_file_list": [],
         })
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         client.list_recordings()
 
         url = session.get.call_args[0][0]
@@ -158,7 +168,7 @@ class TestGetTags:
             "data_filetag_list": tags,
         })
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         result = client.get_tags()
 
         assert result == tags
@@ -186,7 +196,7 @@ class TestGetRecordingDetails:
         })
         session.post.side_effect = [auth_resp, details_resp]
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         result = client.get_recording_details(["f1"])
 
         assert result == details
@@ -202,7 +212,7 @@ class TestGetRecordingDetails:
             _mock_json_response({"status": 0, "data_file_list": []}),
         ]
 
-        client = PlaudClient("u@e.com", "pw")
+        client = PlaudClient(email="u@e.com", password="pw")
         client.get_recording_details(["a", "b"])
 
         url = session.post.call_args[0][0]

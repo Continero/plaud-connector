@@ -89,10 +89,10 @@ class Exporter:
             "duration_ms": duration_ms,
             "transcript": [
                 {
-                    "speaker": seg["speaker"],
-                    "content": seg["content"],
-                    "start_time": seg["start_time"],
-                    "end_time": seg["end_time"],
+                    "speaker": seg.get("speaker", "Unknown"),
+                    "content": seg.get("content", ""),
+                    "start_time": seg.get("start_time", 0),
+                    "end_time": seg.get("end_time", 0),
                 }
                 for seg in transcript
             ],
@@ -114,8 +114,10 @@ class Exporter:
             "",
         ]
         for seg in transcript:
-            ts = _ms_to_timestamp(seg["start_time"])
-            lines.append(f"**{seg['speaker']}** [{ts}]: {seg['content']}")
+            ts = _ms_to_timestamp(seg.get("start_time", 0))
+            speaker = seg.get("speaker", "Unknown")
+            content = seg.get("content", "")
+            lines.append(f"**{speaker}** [{ts}]: {content}")
             lines.append("")
 
         lines.append("## Summary")

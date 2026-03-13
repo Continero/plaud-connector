@@ -20,12 +20,17 @@ def cli():
 
 
 def _get_client() -> PlaudClient:
+    token = os.environ.get("PLAUD_TOKEN")
     email = os.environ.get("PLAUD_EMAIL")
     password = os.environ.get("PLAUD_PASSWORD")
     base_url = os.environ.get("PLAUD_API_BASE", "https://api.plaud.ai")
-    if not email or not password:
-        raise click.ClickException("Set PLAUD_EMAIL and PLAUD_PASSWORD in .env")
-    return PlaudClient(email=email, password=password, base_url=base_url)
+    if token:
+        return PlaudClient(token=token, base_url=base_url)
+    if email and password:
+        return PlaudClient(email=email, password=password, base_url=base_url)
+    raise click.ClickException(
+        "Set PLAUD_TOKEN or PLAUD_EMAIL+PLAUD_PASSWORD in .env"
+    )
 
 
 @cli.command("list")

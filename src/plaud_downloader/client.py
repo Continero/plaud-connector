@@ -33,15 +33,24 @@ class PlaudClient:
 
     def __init__(
         self,
-        email: str,
-        password: str,
+        *,
+        email: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._session = requests.Session()
         self._session.headers.update(_BROWSER_HEADERS)
         self._token: str | None = None
-        self._authenticate(email, password)
+
+        if token:
+            self._token = token.removeprefix("bearer ").removeprefix("Bearer ")
+            self._session.headers.update({"Authorization": f"bearer {self._token}"})
+        elif email and password:
+            self._authenticate(email, password)
+        else:
+            raise ValueError("Provide either token or email+password")
 
     # ------------------------------------------------------------------
     # Auth

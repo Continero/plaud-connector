@@ -31,7 +31,7 @@ def test_list_command(mock_client_cls):
 
 @patch("plaud_downloader.cli.PlaudClient")
 def test_list_command_no_credentials(mock_client_cls):
-    runner = CliRunner(env={"PLAUD_EMAIL": "", "PLAUD_PASSWORD": ""})
+    runner = CliRunner(env={"PLAUD_EMAIL": "", "PLAUD_PASSWORD": "", "PLAUD_TOKEN": ""})
     result = runner.invoke(cli, ["list"])
 
     assert result.exit_code != 0
