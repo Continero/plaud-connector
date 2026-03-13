@@ -117,6 +117,53 @@ class PlaudClient:
         return resp.json().get("data_file_list", [])
 
     # ------------------------------------------------------------------
+    # Transcription
+    # ------------------------------------------------------------------
+
+    def start_transcription(
+        self,
+        file_id: str,
+        language: str = "auto",
+        summary_type: str = "REASONING-NOTE",
+    ) -> dict[str, Any]:
+        """Trigger transcription + summary generation for a recording."""
+        resp = self._session.patch(
+            f"{self._base_url}/file/{file_id}",
+            json={
+                "extra_data": {
+                    "tranConfig": {
+                        "language": language,
+                        "type_type": "system",
+                        "type": summary_type,
+                        "diarization": 1,
+                        "llm": "auto",
+                    }
+                }
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def poll_transcription(
+        self,
+        file_id: str,
+        summary_type: str = "REASONING-NOTE",
+    ) -> dict[str, Any]:
+        """Check transcription status. Returns status=1 when complete."""
+        resp = self._session.post(
+            f"{self._base_url}/ai/transsumm/{file_id}",
+            json={
+                "is_reload": 0,
+                "summ_type": summary_type,
+                "summ_type_type": "system",
+                "info": f'{{"language": "auto", "diarization": 1, "llm": "auto"}}',
+                "support_mul_summ": True,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    # ------------------------------------------------------------------
     # Tags
     # ------------------------------------------------------------------
 
