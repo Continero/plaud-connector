@@ -51,7 +51,8 @@ def list_cmd():
 
 @cli.command()
 @click.option("--output", "-o", default="output", help="Output directory")
-def download(output: str):
+@click.option("--force", is_flag=True, help="Re-download even if files exist")
+def download(output: str, force: bool):
     """Download all recordings."""
     client = _get_client()
     recordings = client.list_recordings()
@@ -68,7 +69,7 @@ def download(output: str):
         batch_ids = file_ids[i : i + 20]
         details = client.get_recording_details(batch_ids)
         for rec in details:
-            result = exporter.export_recording(rec)
+            result = exporter.export_recording(rec, force=force)
             name = rec.get("filename", "Unknown")
             if result == "exported":
                 click.echo(f"Exported: {name}")

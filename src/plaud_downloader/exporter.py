@@ -50,7 +50,7 @@ class Exporter:
         self.output_dir = Path(output_dir)
         self.tag_map: dict[str, str] = {t["id"]: t["name"] for t in tags}
 
-    def export_recording(self, recording: dict) -> str:
+    def export_recording(self, recording: dict, force: bool = False) -> str:
         """Export a single recording. Returns 'exported' or 'skipped'."""
         # Determine folder from tag
         tag_ids = recording.get("filetag_id_list") or []
@@ -71,8 +71,8 @@ class Exporter:
         json_path = folder / f"{stem}.json"
         md_path = folder / f"{stem}.md"
 
-        # Skip if already exported
-        if json_path.exists():
+        # Skip if already exported (unless forced)
+        if json_path.exists() and not force:
             return "skipped"
 
         folder.mkdir(parents=True, exist_ok=True)

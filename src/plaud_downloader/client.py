@@ -126,8 +126,14 @@ class PlaudClient:
         language: str = "auto",
         summary_type: str = "REASONING-NOTE",
     ) -> dict[str, Any]:
-        """Trigger transcription + summary generation for a recording."""
-        resp = self._session.patch(
+        """Trigger transcription + summary generation for a recording.
+
+        Two-step process:
+        1. PATCH sets the transcription config on the file
+        2. POST to /ai/transsumm with is_reload=1 actually starts the job
+        """
+        # Step 1: set config
+        self._session.patch(
             f"{self._base_url}/file/{file_id}",
             json={
                 "extra_data": {
@@ -140,6 +146,18 @@ class PlaudClient:
                     }
                 }
             },
+        ).raise_for_status()
+
+        # Step 2: trigger the job
+        resp = self._session.post(
+            f"{self._base_url}/ai/transsumm/{file_id}",
+            json={
+                "is_reload": 1,
+                "summ_type": summary_type,
+                "summ_type_type": "system",
+                "info": f'{{"language": "{language}", "diarization": 1, "llm": "auto"}}',
+                "support_mul_summ": True,
+            },
         )
         resp.raise_for_status()
         return resp.json()
@@ -149,14 +167,18 @@ class PlaudClient:
         file_id: str,
         summary_type: str = "REASONING-NOTE",
     ) -> dict[str, Any]:
-        """Check transcription status. Returns status=1 when complete."""
+        """Check transcription status.
+
+        Returns status=1 when fully complete, -111 when transcript
+        done but summary still generating, 0 when not started.
+        """
         resp = self._session.post(
             f"{self._base_url}/ai/transsumm/{file_id}",
             json={
                 "is_reload": 0,
                 "summ_type": summary_type,
                 "summ_type_type": "system",
-                "info": f'{{"language": "auto", "diarization": 1, "llm": "auto"}}',
+                "info": '{"language": "auto", "diarization": 1, "llm": "auto"}',
                 "support_mul_summ": True,
             },
         )
