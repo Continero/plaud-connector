@@ -214,24 +214,21 @@ Team discussed project status.
 
 ## Claude Code plugin
 
-If you use [Claude Code](https://claude.com/claude-code), you can install plaud-connector as a plugin. Claude will then be able to work with your Plaud recordings directly -- no CLI installation needed, Claude calls the API itself.
+Don't want to install a CLI? If you use [Claude Code](https://claude.com/claude-code), you can add plaud-connector as a plugin. Claude will call the Plaud API directly -- no installation, no Python, no terminal.
 
-### Install as plugin
+### How to install the plugin
 
-```
-/plugin install plaud-connector@Continero/plaud-connector
-```
+1. Open Claude Code
+2. Click the **Plugins** icon (puzzle piece) or go to Settings -> Plugins
+3. Go to the **Personal** tab
+4. Click **+** -> **Add marketplace from GitHub**
+5. Paste the URL: `https://github.com/Continero/plaud-connector`
+6. Click **Sync**
+7. The "plaud-connector" plugin appears -- click **Install**
 
-### Or install manually
+### After installing
 
-```bash
-mkdir -p ~/.claude/skills/plaud-connector
-cp skills/plaud-connector/SKILL.md ~/.claude/skills/plaud-connector/SKILL.md
-```
-
-### Usage
-
-Set your Plaud credentials as environment variables:
+Set your Plaud credentials as environment variables before starting Claude Code:
 
 ```bash
 export PLAUD_TOKEN="bearer eyJ..."
@@ -243,6 +240,9 @@ Then just ask Claude things like:
 - "list my Plaud recordings"
 - "download all transcripts from Plaud"
 - "trigger transcription for unprocessed recordings"
+- "how many recordings don't have transcripts yet?"
+
+Claude will handle the rest -- fetching data from the API, writing files, waiting for transcription jobs to finish.
 
 ## Disclaimer
 
