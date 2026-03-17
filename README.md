@@ -212,6 +212,18 @@ Team discussed project status.
 
 **EU account not working** -- Add `PLAUD_API_BASE=https://api-euc1.plaud.ai` to your `.env`.
 
+## Claude Code skill
+
+If you use [Claude Code](https://claude.com/claude-code), you can add plaud-connector as a skill so Claude can work with your Plaud recordings directly. No CLI installation needed -- Claude will call the API itself.
+
+Copy the `skill/SKILL.md` file to your Claude skills directory:
+
+```bash
+cp skill/SKILL.md ~/.claude/skills/plaud-connector/SKILL.md
+```
+
+Then set your Plaud credentials as environment variables (or in `.env`), and Claude will be able to list your recordings, download transcripts, trigger transcription, and more.
+
 ## Disclaimer
 
 This is an unofficial tool. It uses undocumented API endpoints reverse-engineered from the plaud.ai web app. Plaud could change their API at any time, which would break this tool. Use at your own risk.
