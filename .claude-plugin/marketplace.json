@@ -1,0 +1,26 @@
+{
+  "name": "plaud-connector",
+  "owner": {
+    "name": "Continero",
+    "email": "david@continero.com"
+  },
+  "metadata": {
+    "description": "Export transcripts and AI summaries from plaud.ai recordings",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "plaud-connector",
+      "source": "./",
+      "description": "Download meeting transcripts from plaud.ai. Bulk export, trigger transcription, incremental sync.",
+      "category": "productivity",
+      "tags": [
+        "plaud",
+        "transcripts",
+        "recordings",
+        "meeting-notes",
+        "export"
+      ]
+    }
+  ]
+}
