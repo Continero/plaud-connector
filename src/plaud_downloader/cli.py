@@ -13,6 +13,13 @@ from dotenv import load_dotenv
 from plaud_downloader.client import PlaudClient
 from plaud_downloader.exporter import Exporter
 
+BANNER = """
+╔══════════════════════════════════════════════╗
+║  plaud-downloader                            ║
+║  Bulk export transcripts from plaud.ai       ║
+╚══════════════════════════════════════════════╝
+"""
+
 
 @click.group()
 def cli():
@@ -146,3 +153,96 @@ def generate(min_duration: int, dry_run: bool, wait: bool):
             click.echo(f"  Still waiting on {len(pending)}...")
 
     click.echo("All transcriptions complete! Run 'plaud download' to fetch results.")
+
+
+@cli.command()
+@click.option("--output", "-o", default="output", help="Output directory")
+@click.option("--min-duration", default=10, help="Skip recordings shorter than N seconds")
+@click.option("--wait/--no-wait", default=True, help="Wait for transcription completion")
+def sync(output: str, min_duration: int, wait: bool):
+    """Full sync: generate missing transcripts, then download everything."""
+    click.echo(BANNER)
+    client = _get_client()
+
+    # Step 1: Overview
+    click.echo("Step 1/3  Fetching recordings from plaud.ai...")
+    recordings = client.list_recordings()
+    total = len(recordings)
+    with_transcript = sum(1 for r in recordings if r.get("is_trans"))
+    total_duration_h = sum(r.get("duration", 0) for r in recordings) / 1000 / 3600
+    click.echo(f"          {total} recordings ({total_duration_h:.1f} hours total)")
+    click.echo(f"          {with_transcript} with transcripts, {total - with_transcript} without\n")
+
+    # Step 2: Generate missing
+    click.echo("Step 2/3  Generating missing transcripts...")
+    missing = [
+        r for r in recordings
+        if not r.get("is_trans")
+        and r.get("duration", 0) // 1000 >= min_duration
+    ]
+
+    if not missing:
+        click.echo("          All recordings already have transcripts!\n")
+    else:
+        click.echo(f"          Triggering transcription for {len(missing)} recordings:")
+        triggered = []
+        for r in missing:
+            name = r.get("filename", "Unknown")
+            dur = r.get("duration", 0) // 1000
+            try:
+                client.start_transcription(r["id"])
+                click.echo(f"            -> {name} ({dur}s)")
+                triggered.append(r)
+            except Exception as e:
+                click.echo(f"            !! {name} — {e}")
+
+        if wait and triggered:
+            click.echo(f"\n          Waiting for {len(triggered)} transcriptions to complete...")
+            pending = {r["id"]: r.get("filename", "Unknown") for r in triggered}
+            while pending:
+                time.sleep(15)
+                done_ids = []
+                for fid, name in pending.items():
+                    try:
+                        result = client.poll_transcription(fid)
+                        if result.get("status") == 1:
+                            click.echo(f"            Done: {name}")
+                            done_ids.append(fid)
+                    except Exception:
+                        pass
+                for fid in done_ids:
+                    del pending[fid]
+                if pending:
+                    click.echo(f"            Still waiting on {len(pending)}...")
+            click.echo("")
+
+    # Step 3: Download
+    click.echo("Step 3/3  Downloading transcripts and summaries...")
+    tags = client.get_tags()
+    exporter = Exporter(output_dir=Path(output), tags=tags)
+    file_ids = [rec["id"] for rec in recordings]
+
+    exported = 0
+    skipped = 0
+    for i in range(0, len(file_ids), 20):
+        batch_ids = file_ids[i : i + 20]
+        details = client.get_recording_details(batch_ids)
+        for rec in details:
+            result = exporter.export_recording(rec)
+            if result == "exported":
+                name = rec.get("filename", "Unknown")
+                click.echo(f"            + {name}")
+                exported += 1
+            else:
+                skipped += 1
+
+    click.echo(f"\n          {exported} new, {skipped} already up to date")
+
+    # Summary
+    click.echo(f"""
+══════════════════════════════════════════════
+  Sync complete!
+  {total} recordings  |  {exported} exported  |  {skipped} skipped
+  Output: {os.path.abspath(output)}/
+══════════════════════════════════════════════
+""")

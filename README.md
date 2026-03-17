@@ -1,47 +1,71 @@
 # plaud-downloader
 
-Bulk export transcripts and AI summaries from [plaud.ai](https://plaud.ai). Also triggers transcription for unprocessed recordings.
+CLI tool that bulk-exports transcripts and AI summaries from [plaud.ai](https://plaud.ai). Can also trigger transcription for unprocessed recordings.
 
-Uses the unofficial plaud.ai web API (reverse-engineered from browser traffic). No official API exists yet.
+Plaud doesn't have a public API, so this tool talks to the same endpoints their web app uses (reverse-engineered from browser traffic). It works today, but if they change their API, it might break.
 
-## Install
+## What it does
+
+- Downloads all your recordings as JSON (structured transcript with speaker labels and timestamps) and Markdown (human-readable)
+- Organizes files by your Plaud tags/folders
+- Triggers transcription for recordings that haven't been processed yet
+- Incremental sync: running it again only downloads new stuff
+
+## Requirements
+
+- Python 3.10+
+- A plaud.ai account with recordings
+
+## Installation
 
 ```bash
-git clone git@github.com:Continero/plaud-downloader.git
+git clone https://github.com/Continero/plaud-downloader.git
 cd plaud-downloader
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-## Setup
+After installation, the `plaud` command is available in your terminal (while the venv is active).
 
-Copy the example env file and add your credentials:
+## Configuration
+
+Copy the example config and fill in your credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-### Authentication
+Then edit `.env` with one of these auth methods:
 
-**Option 1: Bearer token (Google SSO users)**
+### Option A: Bearer token (Google SSO users, or anyone)
 
-1. Go to [app.plaud.ai](https://app.plaud.ai) and sign in
-2. Open DevTools (Cmd+Option+I / F12) -> Network tab
-3. Find any request to `api.plaud.ai` -> copy the `Authorization` header value
+If you signed up with Google, you don't have a password. Grab your token from the browser:
+
+1. Open [app.plaud.ai](https://app.plaud.ai) and sign in
+2. Open DevTools (Cmd+Option+I on Mac, F12 on Windows)
+3. Go to the Network tab
+4. Click any recording to trigger a request
+5. Find a request to `api.plaud.ai`, click it, and copy the `Authorization` header value
 
 ```env
-PLAUD_TOKEN=bearer eyJ...
+PLAUD_TOKEN=bearer eyJhbGciOi...
 ```
 
-**Option 2: Email/password**
+The token expires after some time. When it does, repeat the steps above to get a fresh one.
+
+### Option B: Email and password
+
+If you have a regular account with a password:
 
 ```env
 PLAUD_EMAIL=your@email.com
 PLAUD_PASSWORD=your_password
 ```
 
-**EU accounts** need a different API host:
+### EU accounts
+
+If your account is on the EU instance (check your browser network tab, the requests go to `api-euc1.plaud.ai` instead of `api.plaud.ai`):
 
 ```env
 PLAUD_API_BASE=https://api-euc1.plaud.ai
@@ -49,50 +73,95 @@ PLAUD_API_BASE=https://api-euc1.plaud.ai
 
 ## Usage
 
-### List recordings
+### Quick start: sync everything
+
+The `sync` command does it all in one go. It finds recordings without transcripts, triggers generation, waits for them to finish, and downloads everything.
 
 ```bash
-plaud list
+plaud sync
 ```
 
 ```
-Found 158 recordings:
+╔══════════════════════════════════════════════╗
+║  plaud-downloader                            ║
+║  Bulk export transcripts from plaud.ai       ║
+╚══════════════════════════════════════════════╝
 
-  2026-03-13 09:02   1096s  Team standup
-  2026-03-12 12:26   8220s  Project review
-  ...
+Step 1/3  Fetching recordings from plaud.ai...
+          165 recordings (188.5 hours total)
+          162 with transcripts, 3 without
+
+Step 2/3  Generating missing transcripts...
+          Triggering transcription for 2 recordings:
+            -> Team standup (3811s)
+            -> Project review (1820s)
+
+          Waiting for 2 transcriptions to complete...
+            Done: Team standup
+            Done: Project review
+
+Step 3/3  Downloading transcripts and summaries...
+            + Team standup
+            + Project review
+
+          2 new, 163 already up to date
+
+══════════════════════════════════════════════
+  Sync complete!
+  165 recordings  |  2 exported  |  163 skipped
+  Output: /Users/you/plaud-downloader/output/
+══════════════════════════════════════════════
 ```
 
-### Download transcripts and summaries
+### Individual commands
+
+If you prefer more control:
 
 ```bash
-plaud download              # exports to ./output/
-plaud download -o ~/plaud   # custom output directory
+plaud list                        # show all recordings
+plaud generate --dry-run          # preview what would be transcribed
+plaud generate                    # trigger transcription (don't wait)
+plaud generate --wait             # trigger and wait for completion
+plaud download                    # download to ./output/
+plaud download -o ~/plaud-export  # download to custom directory
+plaud download --force            # re-download even if files exist
 ```
 
-Each recording produces two files:
+### Command options
 
-- `{date}_{name}.json` — structured data (transcript segments with speaker labels + timestamps, AI summary)
-- `{date}_{name}.md` — human-readable markdown
-
-Files are organized by Plaud tag/folder. Untagged recordings go to `Unsorted/`.
-
-Running again skips already-exported files (incremental sync).
-
-### Trigger transcription for unprocessed recordings
-
-```bash
-plaud generate --dry-run    # preview what would be triggered
-plaud generate              # trigger transcription for all
-plaud generate --wait       # trigger and poll until complete
-plaud generate --min-duration 60  # skip recordings under 60s
 ```
+plaud sync [OPTIONS]
+  -o, --output TEXT       Output directory (default: output)
+  --min-duration INT      Skip recordings shorter than N seconds (default: 10)
+  --wait / --no-wait      Wait for transcription (default: --wait)
 
-After generation completes, run `plaud download` to fetch the new transcripts.
+plaud generate [OPTIONS]
+  --min-duration INT      Skip recordings shorter than N seconds (default: 10)
+  --dry-run               Show what would be triggered, don't do it
+  --wait / --no-wait      Wait for completion (default: --no-wait)
+
+plaud download [OPTIONS]
+  -o, --output TEXT       Output directory (default: output)
+  --force                 Re-download even if files already exist
+```
 
 ## Output format
 
+Each recording produces two files, organized into folders matching your Plaud tags. Untagged recordings go to `Unsorted/`.
+
+```
+output/
+  Work/
+    2026-03-17_Team-standup.json
+    2026-03-17_Team-standup.md
+  Unsorted/
+    2026-03-15_Quick-note.json
+    2026-03-15_Quick-note.md
+```
+
 ### JSON
+
+Structured data with transcript segments (speaker, text, timestamps) and the AI-generated summary:
 
 ```json
 {
@@ -108,11 +177,13 @@ After generation completes, run `plaud download` to fetch the new transcripts.
       "end_time": 3000
     }
   ],
-  "summary": "# Meeting Summary\n\nTeam discussed project status."
+  "summary": "# Meeting summary\n\nTeam discussed project status."
 }
 ```
 
 ### Markdown
+
+Same content, readable in any text editor or note-taking app:
 
 ```markdown
 # Team standup
@@ -131,9 +202,19 @@ After generation completes, run `plaud download` to fetch the new transcripts.
 Team discussed project status.
 ```
 
+## Troubleshooting
+
+**"Set PLAUD_TOKEN or PLAUD_EMAIL+PLAUD_PASSWORD in .env"** -- The tool can't find credentials. Make sure your `.env` file is in the directory where you run the command, or that the environment variables are set.
+
+**Token expired / 401 errors** -- Bearer tokens expire. Grab a fresh one from your browser DevTools.
+
+**Empty transcripts** -- Some very short recordings (under 10 seconds) don't produce transcripts. The `generate` command skips these by default.
+
+**EU account not working** -- Add `PLAUD_API_BASE=https://api-euc1.plaud.ai` to your `.env`.
+
 ## Disclaimer
 
-This tool uses an unofficial, undocumented API reverse-engineered from the plaud.ai web app. It may break if Plaud changes their API. Use at your own risk.
+This is an unofficial tool. It uses undocumented API endpoints reverse-engineered from the plaud.ai web app. Plaud could change their API at any time, which would break this tool. Use at your own risk.
 
 ## License
 
