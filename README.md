@@ -19,8 +19,8 @@ Plaud doesn't have a public API, so this tool talks to the same endpoints their 
 ## Installation
 
 ```bash
-git clone https://github.com/Continero/plaud-downloader.git
-cd plaud-downloader
+git clone https://github.com/Continero/plaud-connector.git
+cd plaud-connector
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
