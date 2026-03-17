@@ -1,0 +1,13 @@
+{
+  "name": "plaud-connector",
+  "version": "1.0.0",
+  "description": "Export transcripts and AI summaries from plaud.ai recordings. Bulk download, trigger transcription, incremental sync.",
+  "author": {
+    "name": "Continero",
+    "url": "https://github.com/Continero"
+  },
+  "homepage": "https://github.com/Continero/plaud-connector",
+  "repository": "https://github.com/Continero/plaud-connector",
+  "license": "MIT",
+  "keywords": ["plaud", "transcripts", "recordings", "ai-summaries", "export", "meeting-notes"]
+}
